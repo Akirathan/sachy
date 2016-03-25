@@ -4,43 +4,6 @@
 
 using namespace std;
 
-class Coordinate {
-private:
-    static const int size_N = 3 ;
-    static const int size_M = 3 ;
-    
-public:
-    /**
-     * Preklada string na interni souradnice boardu.
-     * @param s "a1" = "1a"
-     * @return souradnice do board
-     */
-    static int toInt(const string & s) {
-        string a = "abcdefgh" ;
-        int charPos = 0, numPos = 0 ;
-        if (isdigit(s[0])) { //"1a"
-            charPos = 1 ;
-        }
-        else { //"a1"
-            numPos = 1 ;
-        }
-        int m = a.find_first_of(s[charPos]) ;
-        int n = size_N - (int)s[numPos] + 48 ;
-        return toInt(array<int, 2> {n,m}) ;
-    }
-    
-    //puvodni ChessBoard::translate(array<int, 2>) ;
-    static int toInt(array<int, 2> arr) {
-        return arr[0] * size_M + arr[1];
-    }
-};
-
-array<int, 2> ChessBoard::reverseTranslate(int s) {
-    array<int, 2> res;
-    res[0] = s / size_M;
-    res[1] = s % size_M;
-    return move(res);
-}
 
 ChessBoard::ChessBoard() {
 }
@@ -64,7 +27,7 @@ void ChessBoard::print() {
         for (int j = 0; j < size_M; j++) {
             if (j == 0)
                 cout << size_M - i << "  |" ; //cislo radku na zacatek
-            board[Coordinate::toInt(array<int, 2>{i,j})]->print() ; //ok
+            board[Coordinate::translate(array<int, 2>{i,j})]->print() ; //ok
             cout << "|" ;
         }
         cout << "  " << size_M - i << endl ; //cislo radku na konci
@@ -77,24 +40,64 @@ void ChessBoard::print() {
 /**
 * Umisti figurky do hraciho pole.
 */
-void ChessBoard::set() {
+void ChessBoard::setBoard() {
     for (int i = 0; i < size_N; i++) {
         for (int j = 0; j < size_M; j++) {
             setField(i, j, make_unique<Free>()) ;
         }
     }
-    setField(0, 0, make_unique<King>(ChessBoard::BLACK)) ;
+    setField(0, 0, make_unique<King>(ChessBoard::BLACK, Coordinate(array<int, 2>{0,0}))) ;
+}
+
+Coordinate & ChessBoard::getKingLocation(ChessBoard::fraction fraction) const  {
+    
+}
+
+ChessBoard::fraction ChessBoard::getOppositeFraction(ChessBoard::fraction frac) const  {
+    if (frac == BLACK) 
+        return WHITE ;
+    else if (frac == WHITE)
+        return BLACK ;
+}
+
+void ChessBoard::gameCycle() {
+    Coordinate kingLocation = getKingLocation(player) ; 
+    //je kingLocation v ohrozeni?
+    fraction opponent = getOppositeFraction(player) ;
+    for (int i = 0; i < size_N; i++) {
+        for (int j = 0; j < size_M; j++) {
+            if (board[Coordinate::translate(array<int, 2>{i,j})]->getFraction() == opponent && 
+                board[Coordinate::translate(array<int, 2>{i,j})]->canMove(kingLocation)) {
+                check = true ;
+            }
+        }
+    }
+
+    
+    nextPlayer() ;
 }
 
 /**
 * Na souradnice [n,m] dosadi field.
 */
 void ChessBoard::setField(int n, int m, unique_ptr<Field> field) {
-    board[Coordinate::toInt(array<int, 2>{n,m})] = move(field) ;
+    board[Coordinate::translate(array<int, 2>{n,m})] = move(field) ;
 }
 
-King::King(ChessBoard::fraction fraction) : type_(ChessBoard::KING), 
-    fraction_(fraction) {
+/**
+ * Posune na tah dalsiho hrace
+ */
+void ChessBoard::nextPlayer() {
+    if (player == BLACK) {
+        player = WHITE ;
+    }
+    else if (player == WHITE) {
+        player = BLACK ;
+    }
+}
+
+King::King(ChessBoard::fraction fraction, Coordinate coordinate) : type_(ChessBoard::KING), 
+    fraction_(fraction), location_(coordinate) {
 }
 
 ChessBoard::fieldType King::getType() const {
@@ -112,6 +115,13 @@ void King::print() const {
     else if (fraction_ == ChessBoard::BLACK) {
         cout << "bK" ;
     }
+}
+
+bool King::canMove(Coordinate & coordinate) const {
+    int dX = abs(location_.X - coordinate.X) ;
+    int dY = abs(location_.Y - coordinate.Y) ;
+    if (dX > 1 || dY > 1) return false ;
+    else return true ;
 }
 
 Knight::Knight(ChessBoard::fraction fraction) : type_(ChessBoard::KNIGHT),
@@ -148,13 +158,27 @@ void Free::print() const {
     cout << "__";
 }
 
+bool Free::canMove(Coordinate & coordinate) const { }
+
+class A {
+public:
+    int cislo ;
+    A() {}
+};
+
+void zkouska(A & a1) {
+    A a2(a1) ;
+    cout << endl ;
+}
 
 int main(int argc, char ** argv) {
-    unique_ptr<ChessBoard> chess = make_unique<ChessBoard>() ;
+    //unique_ptr<ChessBoard> chess = make_unique<ChessBoard>() ;
     /*chess->set() ;
     chess->print() ;
     chess->set() ;
     chess->print() ;*/
+    A a1 ;
+    zkouska(a1) ;
     
     cout << endl ;
 }
