@@ -11,33 +11,28 @@ class Field ;
 
 class ChessBoard {
 private:
-    array<unique_ptr<Field>, 3*3> board ;
-    const int size_N  = 3 ;
-    const int size_M = 3 ;
+    array<unique_ptr<Field>, 8*8> board ;
+    const int size_N  = 8 ;
+    const int size_M = 8 ;
     
     int translate(array<int, 2> arr) ;
     array<int, 2> reverseTranslate(int s) ;
-    
-    /**
-     * Na souradnice [n,m] dosadi field.
-     */
     void setField(int n, int m, unique_ptr<Field> field) ;
     
 public:
     enum fieldType {KING, KNIGHT, FREE};
+    enum fraction {WHITE, BLACK} ;
     
     ChessBoard() ;
-    
+    void printBorder() ;
     void print() ;
-    
-    /**
-     * Umisti figurky do hraciho pole.
-     */
     void set() ;
 };
 
 
-//reprezentuje jedno policko
+/**
+ * Abstraktni trida reprezentujici jedno policko.
+ */
 class Field {
 public:
     virtual ChessBoard::fieldType getType() const =0 ;
@@ -46,10 +41,11 @@ public:
 
 class King : public Field {
 private:
+    ChessBoard::fraction fraction_ ;
     ChessBoard::fieldType type_ ;
     
 public:
-    King() ;
+    King(ChessBoard::fraction) ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual void print() const override ;
 };
@@ -57,10 +53,11 @@ public:
 
 class Knight : public Field {
 private:
+    ChessBoard::fraction fraction_ ;
     ChessBoard::fieldType type_ ;
     
 public:
-    Knight() ;
+    Knight(ChessBoard::fraction) ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual void print() const override ;
 };
