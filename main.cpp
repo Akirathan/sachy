@@ -44,44 +44,112 @@ void ChessBoard::setBoard() {
     for (int i = 0; i < size_N; i++) {
         for (int j = 0; j < size_M; j++) {
             setField(i, j, make_unique<Free>()) ;
+            //setField(i, j, new Free()) ; //this causes memory leaks
         }
     }
     setField(0, 0, make_unique<King>(ChessBoard::BLACK, Coordinate(array<int, 2>{0,0}))) ;
+    //setField(0, 0, new King(ChessBoard::BLACK, Coordinate(std::array<int, 2>{0, 0}))) ; //causes memory leaks
 }
 
 Coordinate & ChessBoard::getKingLocation(ChessBoard::fraction fraction) const  {
     
 }
 
-ChessBoard::fraction ChessBoard::getOppositeFraction(ChessBoard::fraction frac) const  {
+ChessBoard::fraction ChessBoard::getOppositeFraction(ChessBoard::fraction & frac) const  {
     if (frac == BLACK) 
         return WHITE ;
     else if (frac == WHITE)
         return BLACK ;
 }
 
-void ChessBoard::gameCycle() {
-    Coordinate kingLocation = getKingLocation(player) ; 
-    //je kingLocation v ohrozeni?
-    fraction opponent = getOppositeFraction(player) ;
-    for (int i = 0; i < size_N; i++) {
-        for (int j = 0; j < size_M; j++) {
-            if (board[Coordinate::translate(array<int, 2>{i,j})]->getFraction() == opponent && 
-                board[Coordinate::translate(array<int, 2>{i,j})]->canMove(kingLocation)) {
-                check = true ;
-            }
-        }
+void ChessBoard::setCheck(ChessBoard::fraction & fraction) {
+    if (fraction == BLACK) {
+        checkBlack = true ;
     }
+    else if (fraction == WHITE) {
+        checkWhite = true ;
+    }
+}
 
+void ChessBoard::turnInformation() const {
+    switch (player) {
+        case BLACK :
+            cout << "Black is on turn" << endl ;
+            break ;
+        case WHITE :
+            cout << "White is on turn" << endl ;
+            break ;
+    }
+}
+
+//TODO
+void ChessBoard::gameCycle() {
+    print() ;
+    turnInformation() ; 
+    std::array< std::unique_ptr< Coordinate>, 2> arr = inputMove() ; //arr[0] = figure, arr[1] = desiredLocation
+    Field * figure = viewField(arr[0]->getX(), arr[0]->getY()) ; //get figure
+    Coordinate & currentLocation = *arr[0] ;
+    Coordinate & desiredLocation = *arr[1] ;
+    
+    //check whether the figure has the right color
+    if (figure->getFraction() != player) {
+        //ERROR --> wrong color of selected figure
+    }
+    
+    //check whether the move can be done by this kind of figure
+    if (!figure->canMove(desiredLocation)) {
+        //ERROR --> desired move cannot be done by this kind of figure
+    }
+    
+    //make the move
+    setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())) ;
+    
+    //check whether king is endangered
+    Coordinate kingLocation = getKingLocation(player) ;
+    if (isKingEndangered(player, kingLocation)) {
+        //ERROR --> move cannot be done - king is endangered now
+    }
     
     nextPlayer() ;
 }
 
-/**
-* Na souradnice [n,m] dosadi field.
-*/
+bool ChessBoard::isKingEndangered(fraction frac, Coordinate & kingLocation) const {
+    fraction opponent = getOppositeFraction(frac) ;
+    for (int i = 0; i < size_N; i++) {
+        for (int j = 0; j < size_M; j++) {
+            if (board[Coordinate::translate(array<int, 2>{i,j})]->getFraction() == opponent &&  //ok
+                board[Coordinate::translate(array<int, 2>{i,j})]->canMove(kingLocation)) { //ok
+                    return true ;
+            }
+        }
+    }
+    return false ;
+}
+
+std::array< unique_ptr< Coordinate>, 2> ChessBoard::inputMove() const {
+    std::cout << "input: " ;
+    //input = "1a 4b" or "a1 b4" or "1a b4"
+    string figure, location ;
+    std::cin >> figure ;
+    std::cin >> location ;
+    std::array< std::unique_ptr< Coordinate>, 2> arr ;
+    arr[0] = std::make_unique< Coordinate>( figure) ;
+    arr[1] = std::make_unique< Coordinate>( location) ;
+    return std::move( arr) ;
+}
+
 void ChessBoard::setField(int n, int m, unique_ptr<Field> field) {
-    board[Coordinate::translate(array<int, 2>{n,m})] = move(field) ;
+    board[Coordinate::translate(array<int, 2>{n,m})] = std::move( field) ;
+}
+
+Field * ChessBoard::viewField(int n, int m) const  {
+    return board[Coordinate::translate(array<int, 2>{n,m})].get() ;
+}
+
+std::unique_ptr< Field> ChessBoard::getField(int n, int m)  {
+    std::unique_ptr< Field> ptr = std::move(board[Coordinate::translate(array<int, 2>{n,m})]) ;
+    board[Coordinate::translate(array<int, 2>{n,m})] = make_unique< Free>() ;
+    return std::move( ptr) ;
 }
 
 /**
@@ -117,9 +185,9 @@ void King::print() const {
     }
 }
 
-bool King::canMove(Coordinate & coordinate) const {
-    int dX = abs(location_.X - coordinate.X) ;
-    int dY = abs(location_.Y - coordinate.Y) ;
+bool King::canMove(Coordinate & coordinate) {
+    int dX = abs(location_.getX() - coordinate.getX()) ;
+    int dY = abs(location_.getY() - coordinate.getY()) ;
     if (dX > 1 || dY > 1) return false ;
     else return true ;
 }
@@ -158,27 +226,35 @@ void Free::print() const {
     cout << "__";
 }
 
-bool Free::canMove(Coordinate & coordinate) const { }
+bool Free::canMove(Coordinate & coordinate) { }
 
-class A {
-public:
-    int cislo ;
-    A() {}
-};
 
-void zkouska(A & a1) {
-    A a2(a1) ;
-    cout << endl ;
-}
+/*void ChessBoard::test1() {
+    setBoard() ; //[0,0] = unique_ptr< King>
+    
+    Field * field = viewField(0, 0) ;
+    King * kingPtr = dynamic_cast< King *>( field) ;
+    assert (kingPtr != nullptr && "setBoard failed -- [0,0] is not King") ;
+    
+    //unique_ptr< Field> uniqPtr = getField(0,0) ;
+    //setField(1, 1, std::move( uniqPtr)) ;
+    setField(1, 1, getField(0,0)) ;
+    setField(0, 0, make_unique< Free>()) ; //asi zbytecny
+    
+    //[0,0] = free, [1,1] = king
+    
+    field = viewField(1, 1) ;
+    kingPtr = dynamic_cast< King *>( field) ;
+    assert (kingPtr != nullptr && "board[1,1] is not King") ;
+    
+    field = viewField(0, 0) ;
+    Free * freePtr = dynamic_cast< Free *>( field) ;
+    assert (freePtr != nullptr && "board[0,0] is not Free") ; 
+} */
 
 int main(int argc, char ** argv) {
-    //unique_ptr<ChessBoard> chess = make_unique<ChessBoard>() ;
-    /*chess->set() ;
-    chess->print() ;
-    chess->set() ;
-    chess->print() ;*/
-    A a1 ;
-    zkouska(a1) ;
-    
+    unique_ptr<ChessBoard> chessBoard = make_unique<ChessBoard>() ;
+    chessBoard->setBoard() ;
+
     cout << endl ;
 }
