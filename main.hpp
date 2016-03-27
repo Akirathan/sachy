@@ -13,46 +13,48 @@ using namespace std ;
 const int size_N = 3 ;
 const int size_M = 3 ;
 
+/**
+ * Outputs keywords and their meaning.
+ */
+void printHelp() ;
+
 class Field ;
 
 class Coordinate {
 private:
-    //static const int size_N = 3 ;
-    //static const int size_M = 3 ;
     int coordinate_ ; //souradnice pro board
     int X_, Y_ ;
-    
-    static array<int, 2> reverseTranslate(int s) {
-        array<int, 2> res;
-        res[0] = s / size_M;
-        res[1] = s % size_M;
-        return move(res);
-    }
+    bool outOfBounds_ ;
     
 public:
     
     Coordinate(const string & s) {
-        coordinate_ = translate(s) ;
+        coordinate_ = translateWithBoundCheck(s) ;
         array<int, 2> arr = reverseTranslate(coordinate_) ;
         X_ = arr[0] ;
         Y_ = arr[1] ;
     }
     
     Coordinate(array<int, 2> arr) {
-        coordinate_ = translate(arr) ;
+        coordinate_ = translateWithBoundCheck(arr) ;
         X_ = arr[0] ;
         Y_ = arr[1] ;
+    }
+    
+    bool operator== (const Coordinate & other) {
+        return this->X_ == other.X_ && this->Y_ == other.Y_ ;
     }
     
     int getCoordinate() { return coordinate_ ;}
     int getX() { return X_ ;}
     int getY() { return Y_ ;}
+    bool outOfBounds() { return outOfBounds_ ;}
     /**
      * Preklada string na interni souradnice boardu.
      * @param s "a1" = "1a"
      * @return souradnice do board
      */
-    static int translate(const string & s) {
+    int translateWithBoundCheck(const string & s) {
         string a = "abcdefgh" ;
         int charPos = 0, numPos = 0 ;
         if (isdigit(s[0])) { //"1a"
@@ -63,14 +65,29 @@ public:
         }
         int m = a.find_first_of(s[charPos]) ;
         int n = size_N - (int)s[numPos] + 48 ;
-        return translate(array<int, 2> {n,m}) ;
+        return translateWithBoundCheck(array<int, 2> {n,m}) ;
     }
     
-    //puvodni ChessBoard::translate(array<int, 2>) ;
+    int translateWithBoundCheck(array<int, 2> arr) {
+        if (arr[0] >= size_N || arr[0] < 0 ||
+                arr[1] >= size_M || arr[1] < 0)
+            outOfBounds_ = true ;
+        else outOfBounds_ = false ;
+        return arr[0] * size_M + arr[1];
+    }
+    
     static int translate(array<int, 2> arr) {
         return arr[0] * size_M + arr[1];
     }
+    
+    static array<int, 2> reverseTranslate(int s) {
+        array<int, 2> res;
+        res[0] = s / size_M;
+        res[1] = s % size_M;
+        return move(res);
+    }
 };
+
 
 class ChessBoard {
 public:
@@ -78,9 +95,7 @@ public:
     enum fraction {WHITE, BLACK} ;
     
 private:
-    array<unique_ptr<Field>, size_N * size_M> board ;
-    //const int size_N  = 3 ;
-    //const int size_M = 3 ;
+    array< unique_ptr< Field>, size_N * size_M> board ;
     fraction player ;
     bool checkWhite, checkBlack ; 
     
@@ -93,16 +108,6 @@ private:
      * @param frac the fraction on which the check state is set
      */
     void setCheck(fraction & frac) ;
-    
-    /**
-     * (i) Zkontroluje jestli tam figurka vubec dosahne
-     * (ii) zkontroluje, jestli se tim kral dostane z potencialniho sachu
-     * (p1) Figurka nesmi tahnout tak, aby se kral dostal do sachu.
-     * (p2) Kdyz uz ma kral sach, tak jediny povoleny tah je takovy,
-     * ktery dostane krale ze sachu.
-     * @return true = tah je v poradku
-     */
-    bool checkMove(array<Coordinate, 2> & arr) const ;
     
     /**
      * Checks whether the king of fraction frac on kingLocation is endangered.
@@ -121,10 +126,17 @@ private:
     array<unique_ptr<Coordinate>, 2>  inputMove() const ;
     
     /**
-     * Prints out the information abou who is on turn.
+     * Prints out the information abou who is on turn
+     * and who is in check.
      * Can be extended for additional information.
      */
     void turnInformation() const ;
+    
+    /**
+     * Precte vstup, rozpozna klicove slovo a
+     * podle toho zavola dalsi input metody.
+     */
+    void input() const ;
     
 public:
     
@@ -159,9 +171,18 @@ public:
      * ze se projdeme vsechny nepratelske figurky a vyzkousime,
      * jestli dosahnou na krale.
      */
-    void gameCycle() ;
+    void gameTurn() ;
+    
+    /**
+     * Calls inputMove and checks whether the move is correct.
+     * When true is returned, the value of the parameter is set to correct move.
+     * @param arr
+     * @return 
+     */
+    bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr) ;
     
     void test1() ;
+    void test2() ;
 };
 
 
@@ -181,6 +202,8 @@ public:
      * @return true = muze se tam pohnout
      */
     virtual bool canMove(Coordinate & coordinate) =0 ;
+    
+    virtual void changeLocation(const Coordinate & coordinate) =0 ;
 };
 
 class King : public Field {
@@ -195,6 +218,7 @@ public:
     virtual ChessBoard::fraction getFraction() const override ;
     virtual void print() const override ;
     virtual bool canMove(Coordinate & coordinate) override ;
+    virtual void changeLocation(const Coordinate & coordinate) override ;
 };
 
 
@@ -233,6 +257,7 @@ public:
     virtual ChessBoard::fraction getFraction() const override ;
     virtual void print() const override ;
     virtual bool canMove(Coordinate & coordinate) override ;
+    virtual void changeLocation(const Coordinate & coordinate) override ;
 };
 
 
