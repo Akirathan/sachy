@@ -132,12 +132,6 @@ private:
      */
     void turnInformation() const ;
     
-    /**
-     * Precte vstup, rozpozna klicove slovo a
-     * podle toho zavola dalsi input metody.
-     */
-    void input() const ;
-    
 public:
     
     ChessBoard() ;

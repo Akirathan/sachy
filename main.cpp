@@ -171,19 +171,6 @@ bool ChessBoard::isKingEndangered(fraction frac, Coordinate & kingLocation) cons
     return false ;
 }
 
-void ChessBoard::input() const {
-    string keyword ;
-    std::cout << "input: " ;
-    std::cin >> keyword ;
-    
-    if (keyword == "move") {
-        
-    }
-    else if (keyword == "surrend") {
-        
-    }
-}
-
 std::array< unique_ptr< Coordinate>, 2> ChessBoard::inputMove() const {
     bool correctInput = false ;
     std::array< std::unique_ptr< Coordinate>, 2> arr ;
