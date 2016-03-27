@@ -98,6 +98,7 @@ private:
     array< unique_ptr< Field>, size_N * size_M> board ;
     fraction player ;
     bool checkWhite, checkBlack ; 
+    bool gameExit_ ;
     
     void nextPlayer() ;
     fraction getOppositeFraction(fraction & frac) const ;
@@ -119,7 +120,7 @@ private:
     bool isKingEndangered(fraction frac, Coordinate & kingLocation) const ;
     
     /**
-     * Prompts the player for input.
+     * Prompts the player for input as long, as the input is invalid.
      * Does not care about who is actually on turn.
      * @return array[0] = the figure, array[1] = desired coordinates.
      */
@@ -167,13 +168,15 @@ public:
      */
     void gameTurn() ;
     
+    void gameCycle() ;
+    
     /**
-     * Calls inputMove and checks whether the move is correct.
+     * Calls inputMove and checks whether the move is valid.
      * When true is returned, the value of the parameter is set to correct move.
      * @param arr
      * @return 
      */
-    bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr) ;
+    bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, const string & figure, const string & location) ;
     
     void test1() ;
     void test2() ;

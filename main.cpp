@@ -4,8 +4,11 @@
 
 using namespace std;
 
+void printHelp() {
+    
+}
 
-ChessBoard::ChessBoard() : player(WHITE) {
+ChessBoard::ChessBoard() : player(WHITE), gameExit_(false) {
 }
 
 void ChessBoard::printBorder() {
@@ -86,6 +89,12 @@ void ChessBoard::turnInformation() const {
     std::cout << std::endl ;
 }
 
+void ChessBoard::gameCycle() {
+    while (!gameExit_) {
+        gameTurn() ;
+    }
+}
+
 void ChessBoard::gameTurn() {
     print() ;
     
@@ -93,68 +102,95 @@ void ChessBoard::gameTurn() {
     if (isKingEndangered(player, getKingLocation(player))) {
         setCheck(player) ;
     }
-    
     turnInformation() ; 
     
-    std::array< std::unique_ptr< Coordinate>, 2> arr ; //arr[0] = figure, arr[1] = desiredLocation
-    while (!checkMove( arr)) ; //vadi, ze arr neni inicializovany? --> nejspis ne
-    
-    Coordinate & currentLocation = *arr[0];
-    Coordinate & desiredLocation = *arr[1];
-    
-    
-    //make the move
-    Field * field = viewField( arr[0]->getX(), arr[0]->getY()) ;
-    field->changeLocation( desiredLocation) ; //change the location of the figure
-    setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())) ; //make the move
-    
-    nextPlayer() ;
+    //prompt for command
+    while (true) {
+        std::array< std::unique_ptr< Coordinate>, 2> arr ; //arr[0] = figure, arr[1] = desiredLocation
+        string command;
+        std::cout << "input: ";
+        std::cin >> command;
+        if (command == "move") {
+            string figure, location;
+            std::cin >> figure;
+            std::cin >> location;
+            if (checkMove(arr, figure, location)) { //valid move from input
+                //make the move
+                Coordinate & currentLocation = *arr[0];
+                Coordinate & desiredLocation = *arr[1];
+                Field * field = viewField(arr[0]->getX(), arr[0]->getY());
+                field->changeLocation(desiredLocation); //change the location of the figure --> is this necessary?
+                setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())); //make the move
+                nextPlayer() ;
+                break ;
+            }
+            else { //invalid move from input
+                continue;
+            }
+        } 
+        else if (command == "surrend") {
+            gameExit_ = true ;
+            break ;
+        }
+        else if (command == "help") {
+            printHelp() ;
+        }
+        else {
+            std::cout << "Error: unknown command. Type help for help." << endl ;
+        }
+    }
 }
 
 //rovnou vypise chybu
 //vrati true = arr je nastaven spravne
-bool ChessBoard::checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr) {
-    arr = inputMove();
-    Field * figure = viewField(arr[0]->getX(), arr[0]->getY()); //get figure
-    Coordinate & currentLocation = *arr[0];
-    Coordinate & desiredLocation = *arr[1];
-
-    //assert([0,0] --> [0,1] e.g. a3 --> b3) OK
-    /*assert(currentLocation.getX() == 0 && currentLocation.getY() == 0 
-            && desiredLocation.getX() == 0 && desiredLocation.getY() == 1
-            && "checkMove failed: wrong translate from input to Coordinates") ; */
+bool ChessBoard::checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, const string & figure, const string & location) {
+    std::unique_ptr<Coordinate> currentLocation = std::make_unique<Coordinate>(figure) ;
+    std::unique_ptr<Coordinate> desiredLocation = std::make_unique<Coordinate>(location) ;
+    
+    //check bounds (that is everything, that inputMove checks)
+    if (currentLocation->outOfBounds() || desiredLocation->outOfBounds()) {
+        std::cout << "Error: coordination out of board" << std::endl ;
+        return false ;
+    }
+    
+    Field * figurePtr = viewField(currentLocation->getX(), currentLocation->getY()); //view figure
     
     //check if there is a figure on currentLocation, e.g. if currentLocation is not Free
-    Free * freePtr = dynamic_cast< Free *>( figure) ;
+    Free * freePtr = dynamic_cast< Free *>( figurePtr) ;
     if (freePtr != nullptr) {
         std::cout << "Error: there is no figure on that location" << std::endl;
         return false ;
     }
     
     //check whether the figure has the right color
-    if (figure->getFraction() != player) {
+    if (figurePtr->getFraction() != player) {
         std::cout << "Error: wrong color of selected figure" << std::endl;
         return false;
     }
 
     //check for same coordinates
-    if (currentLocation == desiredLocation) {
+    if (*currentLocation == *desiredLocation) {
         std::cout << "Error: same coordinates in input" << std::endl ;
         return false ;
     }
     
     //check whether the move can be done by this kind of figure
-    if (!figure->canMove(desiredLocation)) {
+    if (!figurePtr->canMove(*desiredLocation)) {
         std::cout << "Error: desired move cannot be done by this kind of figure" << std::endl;
         return false;
     }
 
     //check whether king is endangered
-    Coordinate kingLocation = getKingLocation(player);
-    if (isKingEndangered(player, kingLocation)) {
+    //Coordinate kingLocation = getKingLocation(player);
+    if (isKingEndangered(player, getKingLocation(player))) {
         std::cout << "Error: move cannot be done - king is endangered now" << std::endl;
         return false;
     }
+    
+    //set return value through parameter
+    arr[0] = std::move(currentLocation) ;
+    arr[1] = std::move(desiredLocation) ;
+    
     return true;
 }
 
@@ -316,10 +352,7 @@ void ChessBoard::test1() {
 
 void ChessBoard::test2() {
     setBoard() ;
-    for (int i = 0; i < 3; i++) {
-        gameTurn() ;
-    }
-    print() ;
+    gameCycle() ;
 }
 
 int main(int argc, char ** argv) {
