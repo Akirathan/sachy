@@ -15,16 +15,14 @@ using namespace std ;
 
 class ChessBoard ;
 
-int size_N = 3;
-int size_M = 3;
+int size_N ;
+int size_M ;
 std::unique_ptr<ChessBoard> chessBoard ;
 
 /**
  * Outputs keywords and their meaning.
  */
 void printHelp() ;
-
-void init() ;
 
 /**
  * Naparsuje radku podle ' '.
@@ -149,6 +147,10 @@ private:
      */
     void turnInformation() const ;
     
+    /**
+     * This method initializes board.
+     * @param filename
+     */
     void loadFromFile(const string & filename) ;
     
 public:
@@ -204,14 +206,39 @@ public:
     
 private:
     class Database {
-    public:
-        Database() {
-            scan() ;
-        }
+    private:
+        const int black_king = 1 ;
+        const int black_queen = 2 ;
+        const int black_bishop = 3 ;
+        const int black_rook = 4 ;
+        const int black_knight = 5 ;
+        const int black_pawn = 6 ;
         
-        void scan() {
-            
-        }
+        const int white_king = -1 ;
+        const int white_queen = -2 ;
+        const int white_bishop = -3 ;
+        const int white_rook = -4 ;
+        const int white_knight = -5 ;
+        const int white_pawn = -6 ;
+        
+        const int free = 20 ;
+        
+        std::vector<int> initialTable_ ;
+        int whiteKingLocation_ ;
+        int blackKingLocation_ ;
+        
+    public:
+        Database() ;
+        
+        /**
+         * Scans the board and initiates the initialTable
+         */
+        void scan() ;
+        
+        void setKingLocation(const fraction & frac, int location) ;
+        int getKingLocation(const fraction & frac) ;
+        
+        void recordMove(Coordinate & figure, Coordinate & newLocation) ;
     };
     
     std::unique_ptr<Database> database_ ;

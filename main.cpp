@@ -18,12 +18,9 @@ std::vector<std::string> parseLine(const string & line) {
     return std::move(vec) ;
 }
 
-void init() {
-    std::cout << "Input filename or \"standard\" for standard chessboard: " ;
-    string filename ;
-    std::cin >> filename ;
-    
-}
+//=======================================================
+//                  CHESSBOARD
+//=======================================================
 
 void ChessBoard::loadFromFile(const string & filename) {
     std::ifstream input ;
@@ -159,6 +156,7 @@ void ChessBoard::gameTurn() {
                 Coordinate & desiredLocation = *arr[1];
                 Field * field = viewField(arr[0]->getX(), arr[0]->getY());
                 setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())); //make the move
+                database_->recordMove(currentLocation, desiredLocation) ;
                 nextPlayer() ;
                 break ;
             }
@@ -296,6 +294,62 @@ void ChessBoard::nextPlayer() {
     }
 }
 
+//=======================================================
+//                  DATABASE
+//=======================================================
+ChessBoard::Database::Database() {
+    scan() ;
+}
+
+void ChessBoard::Database::scan() {
+    for(auto it = board.begin(); it != board.end(); it++) {
+        //*it = unique_ptr<Field>
+        Field * fieldPtr = it->get() ;
+        
+        King * kingPtr = dynamic_cast<King *>(fieldPtr) ;
+        Knight * knightPtr = dynamic_cast<Knight *>(fieldPtr) ;
+        //TODO doplnit ostatni figurky
+        
+        if (kingPtr != nullptr) {
+            if (kingPtr->getFraction() == WHITE) {
+                initialTable_.push_back(white_king) ;
+                setKingLocation(WHITE) ;
+            }
+            else if (kingPtr->getFraction() == BLACK) {
+                initialTable_.push_back(black_king) ;
+                setKingLocation(BLACK) ;
+            }
+        }
+        else if (knightPtr != nullptr) {
+            if (knightPtr->getFraction() == WHITE) initialTable_.push_back(white_knight) ;
+            else if (knightPtr->getFraction() == BLACK) initialTable_.push_back(black_knight) ;
+        }
+        //TODO doplnit ostatni podminky
+    }
+}
+
+void ChessBoard::Database::setKingLocation(const fraction & frac, int location) {
+    if (frac == WHITE) {
+        whiteKingLocation_ = location ;
+    }
+    else if (frac == BLACK) {
+        blackKingLocation_ = location ;
+    }
+}
+
+int ChessBoard::Database::getKingLocation(const fraction & frac) {
+    if (frac == WHITE) {
+        return whiteKingLocation_ ;
+    }
+    else if (frac == BLACK) {
+        return blackKingLocation_ ;
+    }
+}
+
+//=======================================================
+//                      KING
+//=======================================================
+
 King::King(ChessBoard::fraction fraction) : type_(ChessBoard::KING), 
     fraction_(fraction) {
 }
@@ -324,6 +378,10 @@ bool King::canMove(Coordinate & thisLocation, Coordinate & coordinate) {
     else return true ;
 }
 
+//=======================================================
+//                    KNIGHT
+//=======================================================
+
 Knight::Knight(ChessBoard::fraction fraction) : type_(ChessBoard::KNIGHT),
         fraction_(fraction) {
 }
@@ -348,6 +406,11 @@ void Knight::print() const {
 bool Knight::canMove(Coordinate & thisLocation, Coordinate & coordinate) {
     
 }
+
+
+//=======================================================
+//                    FREE
+//=======================================================
 
 Free::Free() : type_(ChessBoard::FREE) {
 }
@@ -394,6 +457,9 @@ void ChessBoard::test2() {
 }
 
 int main(int argc, char ** argv) {
-    chessBoard = make_unique<ChessBoard>("map.txt") ;
+    std::cout << "Input filename or \"standard.txt\" for standard chessboard: " ;
+    string filename ;
+    std::cin >> filename ;
+    chessBoard = make_unique<ChessBoard>(filename) ;
     chessBoard->gameCycle() ;
 }
