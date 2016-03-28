@@ -8,7 +8,59 @@ void printHelp() {
     
 }
 
-ChessBoard::ChessBoard() : player(WHITE), gameExit_(false) {
+std::vector<std::string> parseLine(const string & line) {
+    std::vector<std::string> vec ;
+    std::stringstream ss(line) ;
+    std::string item ;
+    while(getline(ss, item, ' ')) {
+        vec.push_back(item) ;
+    }
+    return std::move(vec) ;
+}
+
+void init() {
+    std::cout << "Input filename or \"standard\" for standard chessboard: " ;
+    string filename ;
+    std::cin >> filename ;
+    
+}
+
+void ChessBoard::loadFromFile(const string & filename) {
+    std::ifstream input ;
+    std::vector<std::string> vecRows ;
+    input.open(filename) ;
+    string line, strN, strM ;
+    
+    //read dimensions of board
+    getline(input, strN) ;
+    getline(input, strM) ;
+    size_N = stoi(strN) ;
+    size_M = stoi(strM) ;
+    //---
+    while (getline(input, line)) { 
+        vecRows.push_back(line) ;
+    }
+    
+    for (auto itRow = vecRows.begin(); itRow != vecRows.end(); itRow++) { //pres kazdou radku
+        std::vector<std::string> items = parseLine(*itRow);
+        for (auto itItem = items.begin(); itItem != items.end(); itItem++) { //pres kazdou polozku radky
+            if (*itItem == "bK") {
+                board.push_back(make_unique<King>(BLACK));
+            } else if (*itItem == "wK") {
+                board.push_back(make_unique<King>(WHITE));
+            } else if (*itItem == "bN") {
+                board.push_back(make_unique<Knight>(BLACK));
+            } else if (*itItem == "wN") {
+                board.push_back(make_unique<Knight>(WHITE));
+            } else if (*itItem == "--") {
+                board.push_back(make_unique<Free>());
+            }
+        }
+    }
+}
+
+ChessBoard::ChessBoard(const string & filename) : player(WHITE), gameExit_(false) {
+    loadFromFile(filename) ;
 }
 
 void ChessBoard::printBorder() {
@@ -38,19 +90,6 @@ void ChessBoard::print() {
     cout << endl ;
     printBorder() ;
     //board[translate(array<int, 2>{i,j})]->print() ; //ok
-}
-
-/**
-* Umisti figurky do hraciho pole.
-*/
-void ChessBoard::setBoard() {
-    for (int i = 0; i < size_N; i++) {
-        for (int j = 0; j < size_M; j++) {
-            setField(i, j, make_unique<Free>()) ;
-        }
-    }
-    setField(0, 0, make_unique<King>(ChessBoard::BLACK, Coordinate(array<int, 2>{0,0}))) ;
-    setField(2, 2, make_unique<King>(ChessBoard::WHITE, Coordinate(array<int, 2>{2,2}))) ;
 }
 
 Coordinate & ChessBoard::getKingLocation(ChessBoard::fraction fraction) const  {
@@ -119,7 +158,6 @@ void ChessBoard::gameTurn() {
                 Coordinate & currentLocation = *arr[0];
                 Coordinate & desiredLocation = *arr[1];
                 Field * field = viewField(arr[0]->getX(), arr[0]->getY());
-                field->changeLocation(desiredLocation); //change the location of the figure --> is this necessary?
                 setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())); //make the move
                 nextPlayer() ;
                 break ;
@@ -175,7 +213,7 @@ bool ChessBoard::checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, c
     }
     
     //check whether the move can be done by this kind of figure
-    if (!figurePtr->canMove(*desiredLocation)) {
+    if (!figurePtr->canMove(*currentLocation, *desiredLocation)) {
         std::cout << "Error: desired move cannot be done by this kind of figure" << std::endl;
         return false;
     }
@@ -198,8 +236,9 @@ bool ChessBoard::isKingEndangered(fraction frac, Coordinate & kingLocation) cons
     fraction opponent = getOppositeFraction(frac) ;
     for (int i = 0; i < size_N; i++) {
         for (int j = 0; j < size_M; j++) {
+            Coordinate thisLocation(array<int,2>{i,j}) ;
             if (board[Coordinate::translate(array<int, 2>{i,j})]->getFraction() == opponent &&  //ok
-                board[Coordinate::translate(array<int, 2>{i,j})]->canMove(kingLocation)) { //ok
+                board[Coordinate::translate(array<int, 2>{i,j})]->canMove(thisLocation, kingLocation)) { //ok
                     return true ;
             }
         }
@@ -257,8 +296,8 @@ void ChessBoard::nextPlayer() {
     }
 }
 
-King::King(ChessBoard::fraction fraction, Coordinate coordinate) : type_(ChessBoard::KING), 
-    fraction_(fraction), location_(coordinate) {
+King::King(ChessBoard::fraction fraction) : type_(ChessBoard::KING), 
+    fraction_(fraction) {
 }
 
 ChessBoard::fieldType King::getType() const {
@@ -278,15 +317,11 @@ void King::print() const {
     }
 }
 
-bool King::canMove(Coordinate & coordinate) {
-    int dX = abs(location_.getX() - coordinate.getX()) ;
-    int dY = abs(location_.getY() - coordinate.getY()) ;
+bool King::canMove(Coordinate & thisLocation, Coordinate & coordinate) {
+    int dX = abs(thisLocation.getX() - coordinate.getX()) ;
+    int dY = abs(thisLocation.getY() - coordinate.getY()) ;
     if (dX > 1 || dY > 1) return false ;
     else return true ;
-}
-
-void King::changeLocation(const Coordinate & coordinate) {
-    location_ = coordinate ;
 }
 
 Knight::Knight(ChessBoard::fraction fraction) : type_(ChessBoard::KNIGHT),
@@ -310,6 +345,10 @@ void Knight::print() const {
     }
 }
 
+bool Knight::canMove(Coordinate & thisLocation, Coordinate & coordinate) {
+    
+}
+
 Free::Free() : type_(ChessBoard::FREE) {
 }
 
@@ -323,11 +362,10 @@ void Free::print() const {
     cout << "__";
 }
 
-bool Free::canMove(Coordinate & coordinate) { }
-void Free::changeLocation(const Coordinate & coordinate) { }
+bool Free::canMove(Coordinate & thisLocation, Coordinate & coordinate) { } 
 
 
-void ChessBoard::test1() {
+/*void ChessBoard::test1() {
     setBoard() ; //[0,0] = unique_ptr< King>
     
     Field * field = viewField(0, 0) ;
@@ -348,16 +386,14 @@ void ChessBoard::test1() {
     field = viewField(0, 0) ;
     Free * freePtr = dynamic_cast< Free *>( field) ;
     assert (freePtr != nullptr && "board[0,0] is not Free") ; 
-} 
+} */
 
 void ChessBoard::test2() {
-    setBoard() ;
+    
     gameCycle() ;
 }
 
 int main(int argc, char ** argv) {
-    unique_ptr<ChessBoard> chessBoard = make_unique<ChessBoard>() ;
-    chessBoard->test2() ;
-    
-    cout << endl ;
+    chessBoard = make_unique<ChessBoard>("map.txt") ;
+    chessBoard->gameCycle() ;
 }

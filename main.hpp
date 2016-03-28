@@ -7,16 +7,32 @@
 #include <string>
 #include <cctype>
 #include <cassert>
+#include <vector>
+#include <fstream>
+#include <sstream>
 
 using namespace std ;
 
-const int size_N = 3 ;
-const int size_M = 3 ;
+class ChessBoard ;
+
+int size_N = 3;
+int size_M = 3;
+std::unique_ptr<ChessBoard> chessBoard ;
 
 /**
  * Outputs keywords and their meaning.
  */
 void printHelp() ;
+
+void init() ;
+
+/**
+ * Naparsuje radku podle ' '.
+ * Dulezite, kdyz cteme sachovnici ze souboru.
+ * @param line
+ * @return 
+ */
+std::vector<std::string> parseLine(const string & line) ;
 
 class Field ;
 
@@ -95,7 +111,7 @@ public:
     enum fraction {WHITE, BLACK} ;
     
 private:
-    array< unique_ptr< Field>, size_N * size_M> board ;
+    std::vector< std::unique_ptr< Field>> board ;
     fraction player ;
     bool checkWhite, checkBlack ; 
     bool gameExit_ ;
@@ -133,9 +149,15 @@ private:
      */
     void turnInformation() const ;
     
+    void loadFromFile(const string & filename) ;
+    
 public:
     
-    ChessBoard() ;
+    /**
+     * Constructor needs file to specify.
+     * @param filename
+     */
+    ChessBoard(const string & filename) ;
     
     /**
      * The content of field is robbed.
@@ -158,7 +180,6 @@ public:
     std::unique_ptr< Field> getField(int n, int m) ;
     void printBorder() ;
     void print() ;
-    void setBoard() ;
     Coordinate & getKingLocation(fraction) const ; //TODO
     
     /**
@@ -180,6 +201,20 @@ public:
     
     void test1() ;
     void test2() ;
+    
+private:
+    class Database {
+    public:
+        Database() {
+            scan() ;
+        }
+        
+        void scan() {
+            
+        }
+    };
+    
+    std::unique_ptr<Database> database_ ;
 };
 
 
@@ -198,24 +233,20 @@ public:
      * @param coordinate souradnice, kam se figurka chce pohnout
      * @return true = muze se tam pohnout
      */
-    virtual bool canMove(Coordinate & coordinate) =0 ;
-    
-    virtual void changeLocation(const Coordinate & coordinate) =0 ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) =0 ;
 };
 
 class King : public Field {
 private:
     ChessBoard::fraction fraction_ ;
     ChessBoard::fieldType type_ ;
-    Coordinate location_ ;
     
 public:
-    King(ChessBoard::fraction fraction, Coordinate coordinate) ;
+    King(ChessBoard::fraction fraction) ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
     virtual void print() const override ;
-    virtual bool canMove(Coordinate & coordinate) override ;
-    virtual void changeLocation(const Coordinate & coordinate) override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
 
@@ -229,6 +260,7 @@ public:
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
     virtual void print() const override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
 class Pawn : public Field {
@@ -253,8 +285,7 @@ public:
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
     virtual void print() const override ;
-    virtual bool canMove(Coordinate & coordinate) override ;
-    virtual void changeLocation(const Coordinate & coordinate) override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
 
