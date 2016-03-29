@@ -39,10 +39,14 @@ private:
     int coordinate_ ; //souradnice pro board
     int X_, Y_ ;
     bool outOfBounds_ ;
+    std::string stringContent_ ;
     
 public:
     
+    Coordinate() {}
+    
     Coordinate(const string & s) {
+        stringContent_ = s ; //copy
         coordinate_ = translateWithBoundCheck(s) ;
         array<int, 2> arr = reverseTranslate(coordinate_) ;
         X_ = arr[0] ;
@@ -58,6 +62,8 @@ public:
     bool operator== (const Coordinate & other) {
         return this->X_ == other.X_ && this->Y_ == other.Y_ ;
     }
+    
+    friend std::ostream & operator<<(std::ostream & out, const Coordinate & coordinate) ;
     
     int getCoordinate() { return coordinate_ ;}
     int getX() { return X_ ;}
@@ -138,7 +144,7 @@ private:
      * Does not care about who is actually on turn.
      * @return array[0] = the figure, array[1] = desired coordinates.
      */
-    array<unique_ptr<Coordinate>, 2>  inputMove() const ;
+    std::array<unique_ptr<Coordinate>, 2>  inputMove() const ;
     
     /**
      * Prints out the information abou who is on turn
@@ -207,6 +213,8 @@ public:
 private:
     class Database {
     private:
+        ChessBoard & chessBoard_ ;
+        
         const int black_king = 1 ;
         const int black_queen = 2 ;
         const int black_bishop = 3 ;
@@ -223,12 +231,33 @@ private:
         
         const int free = 20 ;
         
+        int actualTurn_ ;
+        
         std::vector<int> initialTable_ ;
+        
+        /**
+         * Hodi se pro pripady pocet zijicich / vyhozenych figurek.
+         * Na vyhozene figurky potrebujeme znat jeste celkovy pocet figurek na zacatku,
+         * nebo porovname s initialTable_
+         */
+        std::vector<int> actualTable_ ;
         int whiteKingLocation_ ;
         int blackKingLocation_ ;
         
+        struct move_t {
+            std::pair<Coordinate, Coordinate> coord ;
+            std::string nameOfFigure ;
+            int codeOfFigure ;
+        };
+        
+        std::vector<move_t> moves_ ;
+        
     public:
-        Database() ;
+        /**
+         * 
+         * @param chessboard reference na vnejsi tridu
+         */
+        Database(ChessBoard & chessboard) ;
         
         /**
          * Scans the board and initiates the initialTable
@@ -252,7 +281,7 @@ class Field {
 public:
     virtual ChessBoard::fieldType getType() const =0 ;
     virtual ChessBoard::fraction getFraction() const =0 ;
-    virtual void print() const =0 ; //figurky se vytisknou na zaklade sve frakce
+    virtual string print() const =0 ; //figurky se vytisknou na zaklade sve frakce
     
     /**
      * Podle aktualnich souradnic dane figurky (tj. location_) rozhodne,
@@ -272,7 +301,7 @@ public:
     King(ChessBoard::fraction fraction) ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual void print() const override ;
+    virtual string print() const override ;
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
@@ -286,7 +315,7 @@ public:
     Knight(ChessBoard::fraction) ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual void print() const override ;
+    virtual string print() const override ;
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
@@ -299,7 +328,7 @@ public:
     Pawn(ChessBoard::fraction) ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual void print() const override ;
+    virtual string print() const override ;
 };
 
 
@@ -311,7 +340,7 @@ public:
     Free() ;
     virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual void print() const override ;
+    virtual string print() const override ;
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 

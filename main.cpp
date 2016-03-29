@@ -18,6 +18,10 @@ std::vector<std::string> parseLine(const string & line) {
     return std::move(vec) ;
 }
 
+std::ostream & operator<<(std::ostream & out, const Coordinate & coordinate) {
+    out << coordinate.stringContent_ ;
+}
+
 //=======================================================
 //                  CHESSBOARD
 //=======================================================
@@ -79,7 +83,7 @@ void ChessBoard::print() {
         for (int j = 0; j < size_M; j++) {
             if (j == 0)
                 cout << size_M - i << "  |" ; //cislo radku na zacatek
-            board[Coordinate::translate(array<int, 2>{i,j})]->print() ; //ok
+            cout << board[Coordinate::translate(array<int, 2>{i,j})]->print() ; //ok
             cout << "|" ;
         }
         cout << "  " << size_M - i << endl ; //cislo radku na konci
@@ -154,7 +158,7 @@ void ChessBoard::gameTurn() {
                 //make the move
                 Coordinate & currentLocation = *arr[0];
                 Coordinate & desiredLocation = *arr[1];
-                Field * field = viewField(arr[0]->getX(), arr[0]->getY());
+                Field * field = viewField(arr[0]->getX(), arr[0]->getY()); //to nepotrebujeme
                 setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())); //make the move
                 database_->recordMove(currentLocation, desiredLocation) ;
                 nextPlayer() ;
@@ -297,12 +301,15 @@ void ChessBoard::nextPlayer() {
 //=======================================================
 //                  DATABASE
 //=======================================================
-ChessBoard::Database::Database() {
+ChessBoard::Database::Database(ChessBoard & chessboard) : chessBoard_(chessboard),
+        actualTurn_(0)
+{
     scan() ;
 }
 
 void ChessBoard::Database::scan() {
-    for(auto it = board.begin(); it != board.end(); it++) {
+    int locationCounter = 0 ;
+    for(auto it = chessBoard_.board.begin(); it != chessBoard_.board.end(); it++) {
         //*it = unique_ptr<Field>
         Field * fieldPtr = it->get() ;
         
@@ -313,11 +320,11 @@ void ChessBoard::Database::scan() {
         if (kingPtr != nullptr) {
             if (kingPtr->getFraction() == WHITE) {
                 initialTable_.push_back(white_king) ;
-                setKingLocation(WHITE) ;
+                setKingLocation(WHITE, locationCounter) ; 
             }
             else if (kingPtr->getFraction() == BLACK) {
                 initialTable_.push_back(black_king) ;
-                setKingLocation(BLACK) ;
+                setKingLocation(BLACK, locationCounter) ;
             }
         }
         else if (knightPtr != nullptr) {
@@ -325,6 +332,8 @@ void ChessBoard::Database::scan() {
             else if (knightPtr->getFraction() == BLACK) initialTable_.push_back(black_knight) ;
         }
         //TODO doplnit ostatni podminky
+        
+        locationCounter ++ ;
     }
 }
 
@@ -346,6 +355,21 @@ int ChessBoard::Database::getKingLocation(const fraction & frac) {
     }
 }
 
+void ChessBoard::Database::recordMove(Coordinate & figure, Coordinate & newLocation) {
+    move_t move ;
+    Field * fieldPtr = chessBoard_.viewField(figure.getX(), figure.getY()) ;
+    move.nameOfFigure = fieldPtr->print() ;
+    move.codeOfFigure = actualTable_[figure.getCoordinate()] ;
+    move.coord = std::make_pair(figure, newLocation) ; //copy to move.coord ?
+    
+    //rovnou zmenime actualTable_
+    actualTable_[newLocation.getCoordinate()] = actualTable_[figure.getCoordinate()] ;
+    actualTable_[figure.getCoordinate()] = free ;
+    
+    moves_.push_back(move) ;
+    actualTurn_ ++ ;
+}
+
 //=======================================================
 //                      KING
 //=======================================================
@@ -362,12 +386,12 @@ ChessBoard::fraction King::getFraction() const {
     return fraction_ ;
 }
     
-void King::print() const {
+string King::print() const {
     if (fraction_ == ChessBoard::WHITE) {
-        cout << "wK" ;
+        return "wK" ;
     }
     else if (fraction_ == ChessBoard::BLACK) {
-        cout << "bK" ;
+        return "bK" ;
     }
 }
 
@@ -394,12 +418,12 @@ ChessBoard::fraction Knight::getFraction() const {
     return fraction_ ;
 }
 
-void Knight::print() const {
+string Knight::print() const {
     if (fraction_ == ChessBoard::WHITE) {
-        cout << "wN" ;
+        return "wN" ;
     }
     else if (fraction_ == ChessBoard::BLACK) {
-        cout << "bN" ;
+        return "bN" ;
     }
 }
 
@@ -421,8 +445,8 @@ ChessBoard::fieldType Free::getType() const {
 
 ChessBoard::fraction Free::getFraction() const { }
 
-void Free::print() const {
-    cout << "__";
+string Free::print() const {
+    return "__";
 }
 
 bool Free::canMove(Coordinate & thisLocation, Coordinate & coordinate) { } 
