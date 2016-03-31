@@ -53,6 +53,20 @@ public:
         Y_ = arr[1] ;
     }
     
+    /**
+     * Tenhle konstruktor potrebujeme jen pro volani metod getKingLocation.
+     * Bound check tu ani nemusi byt.
+     * @param index
+     */
+    Coordinate(int index) {
+        //bound check
+        if (index >= size_N + size_M) outOfBounds_ = true ; //tady by ten bound check ani nemusel byt
+        coordinate_ = index ;
+        array<int, 2> arr = reverseTranslate(coordinate_) ;
+        X_ = arr[0] ;
+        Y_ = arr[1] ;
+    }
+    
     Coordinate(array<int, 2> arr) {
         coordinate_ = translateWithBoundCheck(arr) ;
         X_ = arr[0] ;
@@ -137,7 +151,7 @@ private:
      * @param frac fraction of the king
      * @return true = the king is endangered
      */
-    bool isKingEndangered(fraction frac, Coordinate & kingLocation) const ;
+    bool isKingEndangered(fraction frac, Coordinate kingLocation) const ;
     
     /**
      * Prompts the player for input as long, as the input is invalid.
@@ -188,7 +202,7 @@ public:
     std::unique_ptr< Field> getField(int n, int m) ;
     void printBorder() ;
     void print() ;
-    Coordinate & getKingLocation(fraction) const ; //TODO
+    Coordinate getKingLocation(fraction) const ;
     
     /**
      * Zjistovani, jestli je kral v ohrozeni probiha tak,
@@ -206,6 +220,10 @@ public:
      * @return 
      */
     bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, const string & figure, const string & location) ;
+    
+    void makeMove(const Coordinate & currentLocation, const Coordinate & desiredLocation) ;
+    
+    void undoMove() ;
     
     void test1() ;
     void test2() ;
