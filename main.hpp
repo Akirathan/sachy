@@ -221,7 +221,7 @@ public:
      */
     bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, const string & figure, const string & location) ;
     
-    void makeMove(const Coordinate & currentLocation, const Coordinate & desiredLocation) ;
+    void makeMove(Coordinate & currentLocation, Coordinate & desiredLocation) ;
     
     void undoMove() ;
     
@@ -248,8 +248,6 @@ private:
         const int white_pawn = -6 ;
         
         const int free = 20 ;
-        
-        int actualTurn_ ;
         
         std::vector<int> initialTable_ ;
         
@@ -286,6 +284,12 @@ private:
         int getKingLocation(const fraction & frac) ;
         
         void recordMove(Coordinate & figure, Coordinate & newLocation) ;
+        
+        /**
+         * Pops one element from moves_ and revert changes
+         * on actualTable_
+         */
+        std::pair<Coordinate, Coordinate> undoMove() ;
     };
     
     std::unique_ptr<Database> database_ ;

@@ -161,8 +161,7 @@ void ChessBoard::gameTurn() {
                 //make the move
                 Coordinate & currentLocation = *arr[0];
                 Coordinate & desiredLocation = *arr[1];
-                database_->recordMove(currentLocation, desiredLocation) ;
-                setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())); //make the move
+                makeMove(currentLocation, desiredLocation) ;
                 nextPlayer() ;
                 break ;
             }
@@ -224,10 +223,13 @@ bool ChessBoard::checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, c
 
     //check whether king is endangered
     //make the move first, and then undo it
+    makeMove(*currentLocation, *desiredLocation) ;
     if (isKingEndangered(player, getKingLocation(player))) {
         std::cout << "Error: move cannot be done - king is endangered now" << std::endl;
+        undoMove() ;
         return false;
     }
+    undoMove() ;
     
     /*
     If every test is passed, then
@@ -237,6 +239,20 @@ bool ChessBoard::checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, c
     arr[1] = std::move(desiredLocation) ;
     
     return true;
+}
+
+void ChessBoard::makeMove(Coordinate & currentLocation, Coordinate & desiredLocation) {
+    database_->recordMove(currentLocation, desiredLocation) ;
+    setField(desiredLocation.getX(), desiredLocation.getY(), getField(currentLocation.getX(), currentLocation.getY())); //make the move
+    
+}
+
+void ChessBoard::undoMove() {
+    //revertMove.second = desiredLocation (tj. odkud figurka puvodne prisla)
+    //reverMove.first = currentLocation (tj. kam figurka puvodne dosla)
+    
+    std::pair<Coordinate, Coordinate> revertMove = database_->undoMove() ;
+    setField(revertMove.second.getX(), revertMove.second.getY(), getField(revertMove.first.getX(), revertMove.first.getY())) ;
 }
 
 bool ChessBoard::isKingEndangered(fraction frac, Coordinate kingLocation) const {
@@ -306,8 +322,7 @@ void ChessBoard::nextPlayer() {
 //=======================================================
 //                  DATABASE
 //=======================================================
-ChessBoard::Database::Database(ChessBoard & chessboard) : chessBoard_(chessboard),
-        actualTurn_(0)
+ChessBoard::Database::Database(ChessBoard & chessboard) : chessBoard_(chessboard)
 {
     scan() ;
 }
@@ -376,8 +391,31 @@ void ChessBoard::Database::recordMove(Coordinate & figure, Coordinate & newLocat
     actualTable_[newLocation.getCoordinate()] = actualTable_[figure.getCoordinate()] ;
     actualTable_[figure.getCoordinate()] = free ;
     
+    //check if figure that was moved right now is king
+    int king = (chessBoard_.player == WHITE) ? white_king : black_king ;
+    if (actualTable_[newLocation.getCoordinate()] == king) {
+        setKingLocation(chessBoard_.player, newLocation.getCoordinate()) ;
+    }
+    
     moves_.push_back(std::move(move)) ;
-    actualTurn_ ++ ;
+}
+
+std::pair<Coordinate, Coordinate> ChessBoard::Database::undoMove() {
+    //move.coord.first = from
+    //move.coord.second = to
+    move_t move = moves_.back() ;
+    moves_.pop_back() ;
+    
+    //check if it is king
+    if (actualTable_[move.coord.second.getCoordinate()] == white_king ||
+            actualTable_[move.coord.second.getCoordinate()] == black_king) {
+        setKingLocation(chessBoard_.player, move.coord.first.getCoordinate()) ;
+    }
+    
+    //revert changes in actualTable_
+    actualTable_[move.coord.first.getCoordinate()] = actualTable_[move.coord.second.getCoordinate()] ;
+    actualTable_[move.coord.second.getCoordinate()] = free ;
+    return std::move(std::make_pair(move.coord.second, move.coord.first)) ;
 }
 
 //=======================================================
