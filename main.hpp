@@ -11,8 +11,6 @@
 #include <fstream>
 #include <sstream>
 
-using namespace std ;
-
 class ChessBoard ;
 
 int size_N ;
@@ -20,17 +18,17 @@ int size_M ;
 std::unique_ptr<ChessBoard> chessBoard ;
 
 /**
- * Outputs keywords and their meaning.
+ * Vypise seznam prikazu.
  */
 void printHelp() ;
 
 /**
- * Naparsuje radku podle ' '.
+ * Naparsuje radku podle ' '
  * Dulezite, kdyz cteme sachovnici ze souboru.
  * @param line
  * @return 
  */
-std::vector<std::string> parseLine(const string & line) ;
+std::vector<std::string> parseLine(const std::string & line) ;
 
 class Field ;
 
@@ -45,29 +43,29 @@ public:
     
     Coordinate() {}
     
-    Coordinate(const string & s) {
-        stringContent_ = s ; //copy
+    Coordinate(const std::string & s) {
+        stringContent_ = s ; 
         coordinate_ = translateWithBoundCheck(s) ;
-        array<int, 2> arr = reverseTranslate(coordinate_) ;
+        std::array<int, 2> arr = reverseTranslate(coordinate_) ;
         X_ = arr[0] ;
         Y_ = arr[1] ;
     }
     
     /**
      * Tenhle konstruktor potrebujeme jen pro volani metod getKingLocation.
-     * Bound check tu ani nemusi byt.
+     * Bound check tu je pro pripad, kdy chceme hram bez krale/kralu.
      * @param index
      */
     Coordinate(int index) {
         //bound check
-        if (index >= size_N + size_M) outOfBounds_ = true ; //tady by ten bound check ani nemusel byt
+        if (index >= size_N + size_M) outOfBounds_ = true ;
         coordinate_ = index ;
-        array<int, 2> arr = reverseTranslate(coordinate_) ;
+        std::array<int, 2> arr = reverseTranslate(coordinate_) ;
         X_ = arr[0] ;
         Y_ = arr[1] ;
     }
     
-    Coordinate(array<int, 2> arr) {
+    Coordinate(std::array<int, 2> arr) {
         coordinate_ = translateWithBoundCheck(arr) ;
         X_ = arr[0] ;
         Y_ = arr[1] ;
@@ -83,13 +81,14 @@ public:
     int getX() { return X_ ;}
     int getY() { return Y_ ;}
     bool outOfBounds() { return outOfBounds_ ;}
+    
     /**
      * Preklada string na interni souradnice boardu.
      * @param s "a1" = "1a"
      * @return souradnice do board
      */
-    int translateWithBoundCheck(const string & s) {
-        string a = "abcdefgh" ;
+    int translateWithBoundCheck(const std::string & s) {
+        std::string a = "abcdefgh" ;
         int charPos = 0, numPos = 0 ;
         if (isdigit(s[0])) { //"1a"
             charPos = 1 ;
@@ -99,10 +98,10 @@ public:
         }
         int m = a.find_first_of(s[charPos]) ;
         int n = size_N - (int)s[numPos] + 48 ;
-        return translateWithBoundCheck(array<int, 2> {n,m}) ;
+        return translateWithBoundCheck(std::array<int, 2> {n,m}) ;
     }
     
-    int translateWithBoundCheck(array<int, 2> arr) {
+    int translateWithBoundCheck(std::array<int, 2> arr) {
         if (arr[0] >= size_N || arr[0] < 0 ||
                 arr[1] >= size_M || arr[1] < 0)
             outOfBounds_ = true ;
@@ -110,12 +109,12 @@ public:
         return arr[0] * size_M + arr[1];
     }
     
-    static int translate(array<int, 2> arr) {
+    static int translate(std::array<int, 2> arr) {
         return arr[0] * size_M + arr[1];
     }
     
-    static array<int, 2> reverseTranslate(int s) {
-        array<int, 2> res;
+    static std::array<int, 2> reverseTranslate(int s) {
+        std::array<int, 2> res;
         res[0] = s / size_M;
         res[1] = s % size_M;
         return move(res);
@@ -125,108 +124,79 @@ public:
 
 class ChessBoard {
 public:
-    enum fieldType {KING, KNIGHT, FREE};
     enum fraction {WHITE, BLACK} ;
     
 private:
-    std::vector< std::unique_ptr< Field>> board ;
-    fraction player ;
-    bool checkWhite, checkBlack ; 
+    std::vector< std::unique_ptr< Field>> board_ ;
+    fraction player_ ;
+    bool checkWhite_, checkBlack_ ; 
     bool gameExit_ ;
     
     void nextPlayer() ;
     fraction getOppositeFraction(fraction & frac) const ;
     
     /**
-     * Sets check state for input fraction.
-     * TODO can output the information
-     * @param frac the fraction on which the check state is set
+     * Nastavi sach pro danou frakci.
      */
     void setCheck(fraction & frac) ;
     
     /**
-     * Checks whether the king of fraction frac on kingLocation is endangered.
-     * Does it by searching all the chessboard for enemy figures
-     * and calling method canMove(this.location) on them.
-     * @param frac fraction of the king
-     * @return true = the king is endangered
+     * Odstrani sach obema frakcim.
+     */
+    void removeCheck() ;
+    
+    /**
+     * Zkontroluje jestli kral dane frakce na pozici kingLocation ma sach.
+     * Implementovano tak, ze se prohleda cela sachovnice a 
+     * na kazde nepratelske figurce se zavola metoda canMove
+     * @param frac frakce krale
+     * @return true v pripade, ze nastal sach
      */
     bool isKingEndangered(fraction frac, Coordinate kingLocation) const ;
     
     /**
-     * Prompts the player for input as long, as the input is invalid.
-     * Does not care about who is actually on turn.
-     * @return array[0] = the figure, array[1] = desired coordinates.
-     */
-    std::array<unique_ptr<Coordinate>, 2>  inputMove() const ;
-    
-    /**
-     * Prints out the information abou who is on turn
-     * and who is in check.
-     * Can be extended for additional information.
+     * Vytiskne informaci o tom, kdo je na tahu a kdo ma sach.
      */
     void turnInformation() const ;
     
     /**
-     * This method initializes board.
-     * @param filename
+     * Inicializuje board_ ze souboru
      */
-    void loadFromFile(const string & filename) ;
+    void loadFromFile(const std::string & filename) ;
     
 public:
     
-    /**
-     * Constructor needs file to specify.
-     * @param filename
-     */
-    ChessBoard(const string & filename) ;
+    ChessBoard(const std::string & filename) ;
     
     /**
-     * The content of field is robbed.
-     * @param field Temporary object made by make_unique< Free>() for example.
+     * Obsah field je vykraden
+     * @param field Temporalni objekt vytvoreny napriklad podle make_unique<Field>
      */
-    void setField(int n, int m, unique_ptr<Field> field) ;
+    void setField(int n, int m, std::unique_ptr<Field> field) ;
     
     /**
-     * Return pointer with read only content
-     * @param n
-     * @param m
-     * @return Pointer used only for reading
+     * Vraci pointer pouze k nahlizeni.
      */
     Field * viewField(int n, int m) const ;
     
     /**
-     * Robs [n,m] and then creates Free object at [n,m]
-     * @return robbed unique_ptr
+     * Vykrade board_[n,m] a pak na stejnem miste vytvori Free
+     * @return vykradeny unique_ptr
      */
-    std::unique_ptr< Field> getField(int n, int m) ;
+    std::unique_ptr<Field> getField(int n, int m) ;
     void printBorder() ;
     void print() ;
     Coordinate getKingLocation(fraction) const ;
-    
-    /**
-     * Zjistovani, jestli je kral v ohrozeni probiha tak,
-     * ze se projdeme vsechny nepratelske figurky a vyzkousime,
-     * jestli dosahnou na krale.
-     */
     void gameTurn() ;
-    
     void gameCycle() ;
     
     /**
-     * Calls inputMove and checks whether the move is valid.
-     * When true is returned, the value of the parameter is set to correct move.
-     * @param arr
-     * @return 
+     * Kontroluje spravnost daneho pohybu z figure --> location.
+     * Jestlize tah je platny, ulozi vysledek do arr.
      */
-    bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, const string & figure, const string & location) ;
-    
+    bool checkMove(std::array< std::unique_ptr< Coordinate>, 2> & arr, const std::string & figure, const std::string & location) ;
     void makeMove(Coordinate & currentLocation, Coordinate & desiredLocation) ;
-    
     void undoMove() ;
-    
-    void test1() ;
-    void test2() ;
     
 private:
     class Database {
@@ -276,18 +246,20 @@ private:
         Database(ChessBoard & chessboard) ;
         
         /**
-         * Scans the board and initiates the initialTable
+         * Projde cely board_ a tim inicializuje Database
          */
         void scan() ;
         
         void setKingLocation(const fraction & frac, int location) ;
         int getKingLocation(const fraction & frac) ;
         
+        /**
+         * Vlozi prvek do moves_ a aktualizuje actualTable_
+         */
         void recordMove(Coordinate & figure, Coordinate & newLocation) ;
         
         /**
-         * Pops one element from moves_ and revert changes
-         * on actualTable_
+         * vynda jeden prvek z moves_ a vrati zmeny.
          */
         std::pair<Coordinate, Coordinate> undoMove() ;
     };
@@ -301,9 +273,8 @@ private:
  */
 class Field {
 public:
-    virtual ChessBoard::fieldType getType() const =0 ;
     virtual ChessBoard::fraction getFraction() const =0 ;
-    virtual string print() const =0 ; //figurky se vytisknou na zaklade sve frakce
+    virtual std::string print() const =0 ; //figurky se vytisknou na zaklade sve frakce
     
     /**
      * Podle aktualnich souradnic dane figurky (tj. location_) rozhodne,
@@ -314,55 +285,98 @@ public:
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) =0 ;
 };
 
+//=======================================================
+//                      KING
+//=======================================================
 class King : public Field {
 private:
     ChessBoard::fraction fraction_ ;
-    ChessBoard::fieldType type_ ;
     
 public:
     King(ChessBoard::fraction fraction) ;
-    virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual string print() const override ;
+    virtual std::string print() const override ;
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
-
+//=======================================================
+//                      KNIGHT
+//=======================================================
 class Knight : public Field {
 private:
     ChessBoard::fraction fraction_ ;
-    ChessBoard::fieldType type_ ;
     
 public:
     Knight(ChessBoard::fraction) ;
-    virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual string print() const override ;
+    virtual std::string print() const override ;
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
+//=======================================================
+//                      PAWN
+//=======================================================
 class Pawn : public Field {
 private:
     ChessBoard::fraction fraction_ ;
-    ChessBoard::fieldType type_ ;
     
 public:
     Pawn(ChessBoard::fraction) ;
-    virtual ChessBoard::fieldType getType() const override ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual string print() const override ;
+    virtual std::string print() const override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
-
-class Free : public Field {
+//=======================================================
+//                      BISHOP
+//=======================================================
+class Bishop : public Field {
 private:
-    ChessBoard::fieldType type_ ;
+    ChessBoard::fraction fraction_ ;
     
 public:
-    Free() ;
-    virtual ChessBoard::fieldType getType() const override ;
+    Bishop(ChessBoard::fraction) ;
     virtual ChessBoard::fraction getFraction() const override ;
-    virtual string print() const override ;
+    virtual std::string print() const override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
+};
+
+//=======================================================
+//                      QUEEN
+//=======================================================
+class Queen : public Field {
+private:
+    ChessBoard::fraction fraction_ ;
+    
+public:
+    Queen(ChessBoard::fraction) ;
+    virtual ChessBoard::fraction getFraction() const override ;
+    virtual std::string print() const override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
+};
+
+//=======================================================
+//                      ROOK
+//=======================================================
+class Rook : public Field {
+private:
+    ChessBoard::fraction fraction_ ;
+    
+public:
+    Rook(ChessBoard::fraction) ;
+    virtual ChessBoard::fraction getFraction() const override ;
+    virtual std::string print() const override ;
+    virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
+};
+
+//=======================================================
+//                      FREE
+//=======================================================
+class Free : public Field {
+public:
+    Free() ;
+    virtual ChessBoard::fraction getFraction() const override ;
+    virtual std::string print() const override ;
     virtual bool canMove(Coordinate & thisLocation, Coordinate & coordinate) override ;
 };
 
